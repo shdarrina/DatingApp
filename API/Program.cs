@@ -17,6 +17,27 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseHttpsRedirection();
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+app.MapControllers();
+app.MapHub<PresenceHub>("hubs/presence");
+app.MapHub<MessageHub>("hubs/message");
+
+var angularRoutes = new string[] {"/members", "/lists", "/messages", "/admin", "/errors"};
+app.MapWhen(
+    context => angularRoutes.Any(r => context.Request.Path.Value.IndexOf(r) == 0),
+    app =>
+    {
+        app.Use((context, next) =>
+        {
+            context.Request.Path = new PathString("/index.html");
+            return next();
+        });
+        app.UseStaticFiles();
+    });
+
 app.UseCors(builder => builder
     .AllowAnyHeader()
     .AllowAnyMethod()
@@ -24,14 +45,6 @@ app.UseCors(builder => builder
     .WithOrigins("https://localhost:4200"));
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseHttpsRedirection();
-
-app.UseDefaultFiles();
-app.UseStaticFiles();
-
-app.MapControllers();
-app.MapHub<PresenceHub>("hubs/presence");
-app.MapHub<MessageHub>("hubs/message");
 
 using var scope = app.Services.CreateScope();
 var services = scope.ServiceProvider;
